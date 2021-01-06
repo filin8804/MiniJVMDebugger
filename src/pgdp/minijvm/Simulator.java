@@ -1,5 +1,7 @@
 package pgdp.minijvm;
 
+import jdk.dynalink.linker.support.SimpleLinkRequest;
+
 public class Simulator {
 
 	private Instruction[] code;
@@ -20,6 +22,16 @@ public class Simulator {
 		this.code = code;
 	}
 
+
+	public Simulator(Simulator fromStack){
+		this.code = fromStack.code;
+		this.programCounter = fromStack.getProgramCounter();
+		this.stack = fromStack.getStack();
+		this.halted = fromStack.halted;
+	}
+
+
+	//Exceutes the next instruction in the code array (Instruction array)
 	public boolean executeNextInstruction() {
 		if (halted) {
 			return false;
@@ -35,6 +47,10 @@ public class Simulator {
 	 */
 	public Stack getStack() {
 		return stack;
+	}
+
+	public void setStack(Stack stack) {
+		this.stack = stack;
 	}
 
 	/**
@@ -73,4 +89,13 @@ public class Simulator {
 	public String toString() {
 		return String.format("Halted: %b%nProgram counter: %d%n%s%n", halted, programCounter, stack);
 	}
+
+	//Makes a copy of the Simulator Object
+	public Simulator createCopy(){
+		return this;
+	}
+
+
+
+
 }
