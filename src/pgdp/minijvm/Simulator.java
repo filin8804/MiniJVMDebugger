@@ -6,7 +6,6 @@ public class Simulator {
 
 	private Instruction[] code;
 	private int programCounter = 0;
-
 	private Stack stack;
 	private boolean halted;
 
@@ -20,14 +19,6 @@ public class Simulator {
 	public Simulator(int stackSize, Instruction[] code) {
 		stack = new Stack(stackSize);
 		this.code = code;
-	}
-
-
-	public Simulator(Simulator fromStack){
-		this.code = fromStack.code;
-		this.programCounter = fromStack.getProgramCounter();
-		this.stack = fromStack.getStack();
-		this.halted = fromStack.halted;
 	}
 
 
@@ -87,7 +78,7 @@ public class Simulator {
 
 	@Override
 	public String toString() {
-		return String.format("Halted: %b%nProgram counter: %d%n%s%n", halted, programCounter, stack);
+		return String.format("Halted: %b%nProgram counter: %d%n%s%n", this.halted, this.programCounter, this.stack);
 	}
 
 	//Makes a copy of the Simulator Object
