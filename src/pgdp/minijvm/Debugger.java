@@ -178,7 +178,7 @@ public class Debugger {
      */
 
     public String undo() {
-        if (simulatorStack.isEmpty())
+        if (simulatorStack.isEmpty() && !lastInstruction.equals("RESET"))
             return "No debugger command to undo!";
         else
             return undoo();
@@ -187,8 +187,10 @@ public class Debugger {
 
     public String undoo() {
         simulatorStack.push(simulator.createCopy());
-        if (justExecutedUndo)
-            simulator = simulatorStack.pop();
+        if (justExecutedUndo) {
+            for (int i = 0; i < 2; i++)
+                simulator = simulatorStack.pop();
+        }
         else {
             for (int i = 0; i < 2; i++)
                 simulator = forUndo.pop();
