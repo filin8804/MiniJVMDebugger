@@ -8,8 +8,14 @@ import java.util.Arrays;
 public class Debugger {
     private Instruction[] code;
     private int breakpoint;
-    private SimulatorStack simulatorBackUp = new SimulatorStack();
+    private final SimulatorStack simulatorStack;
     private Simulator simulator;
+
+    private String lastInstruction;
+    private int lastProgramCounter;
+    private boolean justExecutedUndo;
+
+    private SimulatorStack forUndo = new SimulatorStack();
 
     //Constructors
     public Debugger(int stackSize, String[] instructionsAsStrings) {
@@ -18,6 +24,7 @@ public class Debugger {
 
     public Debugger(int stackSize, Instruction[] code) {
         this.simulator = new Simulator(stackSize, code);
+        this.simulatorStack = new SimulatorStack();
         this.code = code;
     }
 
@@ -28,14 +35,14 @@ public class Debugger {
         for (int i = 0; i < stringToInstruction.length; i++) {
             String command = removeNumber(stringArray[i]);
             int numberInCommand = findInteger(stringArray[i]);
-            stringToInstruction[i] = arraysToString(command, numberInCommand);
+            stringToInstruction[i] = parseInstructions(command, numberInCommand);
         }
         System.out.println(Arrays.toString(stringToInstruction));
         return stringToInstruction;
     }
 
     //Transforms string to Instruction objects
-    private static Instruction arraysToString(String instruction, int integer) {
+    private static Instruction parseInstructions (String instruction, int integer) {
         String instructionCaps = instruction.toUpperCase();
         return switch (instructionCaps) {
             case "ADD" -> new Add();
@@ -88,7 +95,7 @@ public class Debugger {
     public String run() {
         do {
             simulator.executeNextInstruction();
-            simulatorBackUp.push(simulator.createCopy());
+            simulatorStack.push(simulator.createCopy());
         } while (simulator.getProgramCounter() < code.length && simulator.getProgramCounter() < breakpoint);
         return "No more instructions to execute!";
 
@@ -101,9 +108,10 @@ public class Debugger {
         else if(k >= 0) {
             do {
                 //TODO : Add the case with breakpoint pls
-                simulatorBackUp.push(simulator.createCopy());
+                simulatorStack.push(simulator.createCopy());
                 simulator.executeNextInstruction();
             } while (simulator.getProgramCounter() < originalPC + k && simulator.getProgramCounter() != code.length - 1);
+            lastProgramCounter = simulator.getProgramCounter();
             return null;
         }
         return "No more instructions to execute!";
@@ -113,41 +121,87 @@ public class Debugger {
     //Push seems to be working fine
     public String step() {
         if (!simulator.isHalted() && simulator.getProgramCounter() != this.code.length - 1) {
-            simulatorBackUp.push(simulator.createCopy());
-            System.out.println("Size : " + simulatorBackUp.size());
+            simulatorStack.push(simulator.createCopy());
             simulator.executeNextInstruction();
+            lastProgramCounter = simulator.getProgramCounter();
             return null;
         }
         return "No more instructions to execute!";
     }
 
     public String reset() {
-        while (!simulatorBackUp.isEmpty()) {
-            this.simulator = simulatorBackUp.pop();
+        while (!simulatorStack.isEmpty()) {
+            this.simulator = simulatorStack.pop();
         }
         return null;
     }
 
     //Pop is just going crazy for some reason.
     public String back() {
-        if (!this.simulatorBackUp.isEmpty()) {
-            System.out.println(simulatorBackUp.peek().toString());
-            //simulator = simulatorBackUp.pop();
+        if (!this.simulatorStack.isEmpty()) {
+            Simulator thisSimulator = this.simulatorStack.pop();
+
+                this.simulator = thisSimulator;
+                /*
+            else {
+                while(thisSimulator.getProgramCounter() != simulator.getProgramCounter()-1)
+                    thisSimulator = simulatorStack.pop();
+                this.simulator = thisSimulator;
+            }
+
+                 */
             return null;
         }
         return "Cannot go back an instruction, none left!";
     }
 
+    /*
     public String undo() {
-        if (simulatorBackUp.isEmpty())
+        System.out.println(lastProgramCounter);
+        if (justExecutedUndo) {
+            executeDebuggerCommand(lastInstruction);
+            return null;
+        } else if (lastInstruction != null && removeNumber(lastInstruction).equals("RESET")) {
+            return next(lastProgramCounter);
+        } else if (simulatorStack.isEmpty())
             return "No debugger command to undo!";
         else {
-            while (simulator.getProgramCounter() >= 0) {
-                simulator.setProgramCounter(simulator.getProgramCounter() - 1);
-                this.simulator = simulatorBackUp.pop();
+            for (int i = 0; i < 1; i++) {
+                if (!simulatorStack.isEmpty())
+                    simulator = simulatorStack.pop();
             }
+            justExecutedUndo = true;
+            return null;
         }
+    }
+
+     */
+
+    public String undo(){
+        if (simulatorStack.isEmpty())
+            return "No debugger command to undo!";
+        else
+            return undoo();
+
+    }
+
+    public String undoo(){
+        simulatorStack.push(simulator.createCopy());
+        if(justExecutedUndo)
+            simulator = simulatorStack.pop();
+        else {
+            for(int i = 0 ; i < 2 ; i++)
+                simulator = forUndo.pop();
+        }
+        justExecutedUndo = true;
+        forUndo.clear();
         return null;
+    }
+
+
+    private void backForUndo(int absolute){
+        for(int i = 0 ; i < absolute ; i++)
+            back();
     }
 
     public Simulator getSimulator() {
@@ -159,6 +213,13 @@ public class Debugger {
         int numbersInCommand = findInteger(commandCaps);
         String commandNoNumber = removeNumber(command);
 
+        forUndo.push(simulator.createCopy());
+
+        if(!commandNoNumber.equals("UNDO")) {
+            lastInstruction = command;
+            justExecutedUndo = false;
+
+        }
         return switch (commandNoNumber) {
             case "SET-BREAKPOINT" -> setBreakpoint(numbersInCommand);
             case "REMOVE-BREAKPOINT" -> removeBreakpoint(numbersInCommand);
