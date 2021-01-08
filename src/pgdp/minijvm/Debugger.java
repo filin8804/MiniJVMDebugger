@@ -96,6 +96,8 @@ public class Debugger {
         do {
             simulator.executeNextInstruction();
             simulatorStack.push(simulator.createCopy());
+            if(simulator.getProgramCounter() == breakpoint)
+                return null;
         } while (simulator.getProgramCounter() < code.length && simulator.getProgramCounter() < breakpoint);
         return "No more instructions to execute!";
 
