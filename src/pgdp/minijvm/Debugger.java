@@ -4,41 +4,38 @@ import pgdp.MiniJava;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.SortedMap;
 
 public class Debugger {
     private Instruction[] code;
     private int breakpoint;
-    private SimulatorStack simulatorStack;
+    private SimulatorStack simulatorBackUp = new SimulatorStack();
     private Simulator simulator;
 
     //Constructors
     public Debugger(int stackSize, String[] instructionsAsStrings) {
-        this(stackSize, stringToInstructionArray(instructionsAsStrings));
+        this(stackSize, parseInstructions(instructionsAsStrings));
     }
-
 
     public Debugger(int stackSize, Instruction[] code) {
         this.simulator = new Simulator(stackSize, code);
-        this.simulatorStack = new SimulatorStack();
         this.code = code;
     }
 
     //Transforms the String array to Instruction Array
-    private static Instruction[] stringToInstructionArray(String[] stringArray) {
+    public static Instruction[] parseInstructions(String[] stringArray) {
         Instruction[] stringToInstruction = new Instruction[stringArray.length];
 
         for (int i = 0; i < stringToInstruction.length; i++) {
             String command = removeNumber(stringArray[i]);
             int numberInCommand = findInteger(stringArray[i]);
-            stringToInstruction[i] = parseInstruction(command, numberInCommand);
+            stringToInstruction[i] = arraysToString(command, numberInCommand);
         }
         System.out.println(Arrays.toString(stringToInstruction));
         return stringToInstruction;
     }
 
     //Transforms string to Instruction objects
-    public static Instruction parseInstruction(String instruction, int integer) {
+    private static Instruction arraysToString(String instruction, int integer) {
         String instructionCaps = instruction.toUpperCase();
         return switch (instructionCaps) {
             case "ADD" -> new Add();
@@ -64,13 +61,8 @@ public class Debugger {
             this.breakpoint = index;
             return null;
         }
-
     }
 
-    private void changeSimulator(Simulator toChange){
-        simulator.setProgramCounter(toChange.getProgramCounter());
-        simulator.setStack(toChange.getStack());
-    }
 
     // TODO: How am I supposed to remove a breakpoint??
     public String removeBreakpoint(int index) {
@@ -86,7 +78,7 @@ public class Debugger {
 
 
     private boolean notMeetBreakpoint(int programCounter) {
-        if (programCounter <= breakpoint)
+        if(programCounter <= breakpoint)
             return true;
         else
             return false;
@@ -96,7 +88,7 @@ public class Debugger {
     public String run() {
         do {
             simulator.executeNextInstruction();
-            simulatorStack.push(getSimulator());
+            simulatorBackUp.push(simulator.createCopy());
         } while (simulator.getProgramCounter() < code.length && simulator.getProgramCounter() < breakpoint);
         return "No more instructions to execute!";
 
@@ -104,14 +96,14 @@ public class Debugger {
 
     public String next(int k) {
         int originalPC = simulator.getProgramCounter();
-        if (k < 0)
+        if(k < 0)
             return "Instruction count must be positive!";
-        else if (k >= 0) {
+        else if(k >= 0) {
             do {
                 //TODO : Add the case with breakpoint pls
-                simulatorStack.push(simulator.createCopy());
+                simulatorBackUp.push(simulator.createCopy());
                 simulator.executeNextInstruction();
-            } while (simulator.getProgramCounter() < originalPC + 2 && simulator.getProgramCounter() != code.length - 1);
+            } while (simulator.getProgramCounter() < originalPC + k && simulator.getProgramCounter() != code.length - 1);
             return null;
         }
         return "No more instructions to execute!";
@@ -121,39 +113,38 @@ public class Debugger {
     //Push seems to be working fine
     public String step() {
         if (!simulator.isHalted() && simulator.getProgramCounter() != this.code.length - 1) {
-            simulatorStack.push(simulator.createCopy());
-            System.out.println("Size : " + simulatorStack.size());
+            simulatorBackUp.push(simulator.createCopy());
+            System.out.println("Size : " + simulatorBackUp.size());
             simulator.executeNextInstruction();
-            //simulatorStack.push(getSimulator());
             return null;
         }
         return "No more instructions to execute!";
     }
 
     public String reset() {
-        while (!simulatorStack.isEmpty()) {
-            this.simulator = simulatorStack.pop();
+        while (!simulatorBackUp.isEmpty()) {
+            this.simulator = simulatorBackUp.pop();
         }
         return null;
     }
 
     //Pop is just going crazy for some reason.
     public String back() {
-        //System.out.println("Methode called!");
-        if (!this.simulatorStack.isEmpty()) {
-            simulator = simulatorStack.pop();
+        if (!this.simulatorBackUp.isEmpty()) {
+            System.out.println(simulatorBackUp.peek().toString());
+            //simulator = simulatorBackUp.pop();
             return null;
         }
         return "Cannot go back an instruction, none left!";
     }
 
     public String undo() {
-        if (simulatorStack.isEmpty())
+        if (simulatorBackUp.isEmpty())
             return "No debugger command to undo!";
         else {
             while (simulator.getProgramCounter() >= 0) {
                 simulator.setProgramCounter(simulator.getProgramCounter() - 1);
-                this.simulator = simulatorStack.pop();
+                this.simulator = simulatorBackUp.pop();
             }
         }
         return null;
